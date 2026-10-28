@@ -54,6 +54,7 @@ public class ApiServer {
         server.createContext("/api/analytics/skill-demand", new SkillDemandHandler());
         server.createContext("/api/resumes/parse", new ResumeParseHandler());
         server.createContext("/api/resumes/import", new ResumeImportHandler());
+        server.createContext("/api/demo/reset", new DemoResetHandler());
 
         // Static files handler for React web build
         server.createContext("/", new StaticFileHandler());
@@ -408,13 +409,14 @@ public class ApiServer {
                     sb.append("]");
                     sendJson(exchange, 200, sb.toString());
                 } else if ("PUT".equals(method)) {
-                    // Expect /api/applications/{id}/status
+                    // Expect /api/applications/{id}/status or /api/applications/{id}
                     String[] parts = path.split("/");
                     int appId = -1;
-                    if (parts.length >= 4) {
-                        appId = parseInt(parts[parts.length - 2], -1);
-                    } else if (parts.length >= 3) {
-                        appId = parseInt(parts[parts.length - 1], -1);
+                    for (int i = 0; i < parts.length; i++) {
+                        if ("applications".equals(parts[i]) && i + 1 < parts.length) {
+                            appId = parseInt(parts[i + 1], -1);
+                            break;
+                        }
                     }
 
                     String body = readBody(exchange);
@@ -563,6 +565,37 @@ public class ApiServer {
                 }
                 sb.append("}");
                 sendJson(exchange, 201, sb.toString());
+            } catch (Exception e) {
+                sendJson(exchange, 500, "{\"error\":" + JsonUtil.quote(e.getMessage()) + "}");
+            }
+        }
+    }
+
+    private class DemoResetHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            sendCors(exchange);
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            try {
+                // Ensure jobs exist
+                jobService.seedInitialJobsIfEmpty();
+
+                // Screen candidates for Job 1 and Job 2
+                List<Job> jobs = jobService.getAllJobs();
+                for (Job j : jobs) {
+                    analyticsService.batchScreenAllCandidatesForJob(j.getJobId());
+                }
+
+                // Add sample note
+                List<Application> apps = analyticsService.getAllApplications();
+                if (!apps.isEmpty()) {
+                    analyticsService.addApplicationNote(apps.get(0).getApplicationId(), "Sarah Chen (Director of Eng)", "Outstanding system design knowledge, clear communicator on microservices.", 5);
+                }
+
+                sendJson(exchange, 200, "{\"success\":true,\"message\":\"Demo data successfully synced and scored.\"}");
             } catch (Exception e) {
                 sendJson(exchange, 500, "{\"error\":" + JsonUtil.quote(e.getMessage()) + "}");
             }

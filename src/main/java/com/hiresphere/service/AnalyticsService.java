@@ -40,10 +40,6 @@ public class AnalyticsService {
     }
 
     public int submitApplication(int jobId, int candidateId, String notes) throws SQLException {
-        if (applicationDAO.hasAlreadyApplied(jobId, candidateId)) {
-            throw new IllegalStateException("Candidate #" + candidateId + " has already applied for Job #" + jobId + ".");
-        }
-
         MatchResult match = evaluateMatch(jobId, candidateId);
         return applicationDAO.applyForJob(jobId, candidateId, match, notes);
     }
@@ -62,12 +58,10 @@ public class AnalyticsService {
         int screenedCount = 0;
 
         for (Candidate c : candidates) {
-            if (!applicationDAO.hasAlreadyApplied(jobId, c.getCandidateId())) {
-                MatchResult match = SkillMatchEngine.evaluate(job, c);
-                String initialNote = "Auto-screened via ATS Engine. Computed Tier: " + match.getMatchTier();
-                applicationDAO.applyForJob(jobId, c.getCandidateId(), match, initialNote);
-                screenedCount++;
-            }
+            MatchResult match = SkillMatchEngine.evaluate(job, c);
+            String initialNote = "Auto-screened via ATS Engine. Computed Tier: " + match.getMatchTier();
+            applicationDAO.applyForJob(jobId, c.getCandidateId(), match, initialNote);
+            screenedCount++;
         }
         return screenedCount;
     }

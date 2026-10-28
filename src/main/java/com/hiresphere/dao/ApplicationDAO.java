@@ -22,8 +22,11 @@ import java.util.Map;
 public class ApplicationDAO {
 
     public int applyForJob(int jobId, int candidateId, MatchResult matchResult, String notes) throws SQLException {
+        String checkExistingSql = "SELECT application_id FROM applications WHERE job_id = ? AND candidate_id = ?";
+        String updateAppSql = "UPDATE applications SET match_score = ?, skill_coverage_score = ?, experience_factor = ?, proficiency_factor = ?, notes = ? WHERE application_id = ?";
         String insertAppSql = "INSERT INTO applications (job_id, candidate_id, match_score, skill_coverage_score, experience_factor, proficiency_factor, notes, status) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, 'APPLIED')";
+        String deleteAuditSql = "DELETE FROM match_audit_logs WHERE application_id = ?";
         String insertAuditSql = "INSERT INTO match_audit_logs (application_id, missing_mandatory_skills, gap_summary) VALUES (?, ?, ?)";
 
         Connection conn = null;
@@ -31,26 +34,54 @@ public class ApplicationDAO {
             conn = DatabaseConfig.getConnection();
             conn.setAutoCommit(false); // Transaction begin
 
-            int generatedAppId = -1;
-            try (PreparedStatement appStmt = conn.prepareStatement(insertAppSql, Statement.RETURN_GENERATED_KEYS)) {
-                appStmt.setInt(1, jobId);
-                appStmt.setInt(2, candidateId);
-                appStmt.setDouble(3, matchResult.getCompositeScore());
-                appStmt.setDouble(4, matchResult.getSkillCoverageScore());
-                appStmt.setDouble(5, matchResult.getExperienceFactor());
-                appStmt.setDouble(6, matchResult.getProficiencyFactor());
-                appStmt.setString(7, notes);
-                appStmt.executeUpdate();
-
-                try (ResultSet keys = appStmt.getGeneratedKeys()) {
-                    if (keys.next()) {
-                        generatedAppId = keys.getInt(1);
+            int targetAppId = -1;
+            try (PreparedStatement checkStmt = conn.prepareStatement(checkExistingSql)) {
+                checkStmt.setInt(1, jobId);
+                checkStmt.setInt(2, candidateId);
+                try (ResultSet rs = checkStmt.executeQuery()) {
+                    if (rs.next()) {
+                        targetAppId = rs.getInt(1);
                     }
                 }
             }
 
-            if (generatedAppId == -1) {
-                throw new SQLException("Failed to retrieve generated application ID.");
+            if (targetAppId > 0) {
+                // Update existing application
+                try (PreparedStatement upStmt = conn.prepareStatement(updateAppSql)) {
+                    upStmt.setDouble(1, matchResult.getCompositeScore());
+                    upStmt.setDouble(2, matchResult.getSkillCoverageScore());
+                    upStmt.setDouble(3, matchResult.getExperienceFactor());
+                    upStmt.setDouble(4, matchResult.getProficiencyFactor());
+                    upStmt.setString(5, notes);
+                    upStmt.setInt(6, targetAppId);
+                    upStmt.executeUpdate();
+                }
+                try (PreparedStatement delAudit = conn.prepareStatement(deleteAuditSql)) {
+                    delAudit.setInt(1, targetAppId);
+                    delAudit.executeUpdate();
+                }
+            } else {
+                // Insert new application
+                try (PreparedStatement appStmt = conn.prepareStatement(insertAppSql, Statement.RETURN_GENERATED_KEYS)) {
+                    appStmt.setInt(1, jobId);
+                    appStmt.setInt(2, candidateId);
+                    appStmt.setDouble(3, matchResult.getCompositeScore());
+                    appStmt.setDouble(4, matchResult.getSkillCoverageScore());
+                    appStmt.setDouble(5, matchResult.getExperienceFactor());
+                    appStmt.setDouble(6, matchResult.getProficiencyFactor());
+                    appStmt.setString(7, notes);
+                    appStmt.executeUpdate();
+
+                    try (ResultSet keys = appStmt.getGeneratedKeys()) {
+                        if (keys.next()) {
+                            targetAppId = keys.getInt(1);
+                        }
+                    }
+                }
+            }
+
+            if (targetAppId <= 0) {
+                throw new SQLException("Failed to retrieve or generate application ID.");
             }
 
             // Record audit log
@@ -63,14 +94,14 @@ public class ApplicationDAO {
             }
 
             try (PreparedStatement auditStmt = conn.prepareStatement(insertAuditSql)) {
-                auditStmt.setInt(1, generatedAppId);
+                auditStmt.setInt(1, targetAppId);
                 auditStmt.setString(2, missingMandatory.toString());
                 auditStmt.setString(3, matchResult.getGapsSummary());
                 auditStmt.executeUpdate();
             }
 
             conn.commit(); // Transaction commit
-            return generatedAppId;
+            return targetAppId;
 
         } catch (SQLException ex) {
             if (conn != null) {

@@ -5,7 +5,7 @@ import {
   Users,
   Award,
   Kanban,
-  FileText,
+  FileCheck2,
   Plus,
   RefreshCw,
   Search,
@@ -19,33 +19,35 @@ import {
   Star,
   MessageSquare,
   Clock,
-  Building,
-  MapPin,
-  DollarSign,
-  ChevronRight,
-  SlidersHorizontal,
+  Sparkles,
   UploadCloud,
-  FileCheck2
+  ChevronRight,
+  ExternalLink,
+  ShieldCheck,
+  Check
 } from 'lucide-react';
 
 const PIPELINE_STAGES = [
-  { id: 'APPLIED', label: 'New Applied', color: '#38bdf8' },
-  { id: 'SCREENING', label: 'Screening', color: '#f59e0b' },
-  { id: 'INTERVIEW', label: 'Interview', color: '#818cf8' },
-  { id: 'OFFERED', label: 'Offer Sent', color: '#a855f7' },
-  { id: 'HIRED', label: 'Hired', color: '#10b981' },
-  { id: 'REJECTED', label: 'Archived / Rejected', color: '#ef4444' }
+  { id: 'APPLIED', label: '1. New Applied', color: '#38bdf8' },
+  { id: 'SCREENING', label: '2. Screening', color: '#f59e0b' },
+  { id: 'INTERVIEW', label: '3. Technical Interview', color: '#818cf8' },
+  { id: 'OFFERED', label: '4. Offer Extended', color: '#a855f7' },
+  { id: 'HIRED', label: '5. Hired', color: '#10b981' },
+  { id: 'REJECTED', label: 'Rejected / Archived', color: '#ef4444' }
 ];
 
-const SAMPLE_RESUMES = {
-  javaBackend: `ARJUN NAIR
+const DEMO_RESUMES = {
+  tier1: {
+    label: 'Arjun Nair (Lead Java Engineer)',
+    matchPreview: 'Expected: ~95-100% (TIER 1)',
+    text: `ARJUN NAIR
 Email: arjun.nair@enterprise-talent.com
 Phone: +1 (415) 890-2415
 Location: San Francisco, CA | Remote
 Education: B.Tech in Computer Science & Engineering (2019)
 
 PROFESSIONAL SUMMARY
-Senior Backend Software Engineer with 5.5 years of experience architecting distributed microservices and low-latency REST APIs. Specialized in Java, Spring Boot, MySQL, and Docker containerization. Proven track record leading cloud migrations on AWS.
+Lead Backend Software Engineer with 5.5 years of experience architecting distributed microservices and low-latency REST APIs. Specialized in Java, Spring Boot, MySQL, and Docker containerization. Proven track record leading cloud migrations on AWS.
 
 TECHNICAL SKILLS
 Languages & Frameworks: Java, Spring Boot, REST APIs, Microservices, Python
@@ -56,39 +58,46 @@ EXPERIENCE
 Lead Backend Engineer | FinTech Systems (2022 - Present)
 - Architected high-throughput transaction processing engine in Java and Spring Boot serving 15M daily requests.
 - Optimized MySQL schema and indexing, cutting 99th percentile query latency by 42%.
-- Deployed microservices using Docker on AWS ECS with auto-scaling policies.`,
-
-  cloudDevops: `VIKRAM SINGHANIA
-Email: vikram.singh@cloudnative-dev.io
-Phone: +1 (206) 555-8910
-Location: Seattle, WA | Hybrid
-Education: M.S. in Software Systems (2018)
+- Deployed microservices using Docker on AWS ECS with auto-scaling policies.`
+  },
+  tier2: {
+    label: 'Priya Patel (Junior Java Dev)',
+    matchPreview: 'Expected: ~60-65% (TIER 2 - Experience Gap)',
+    text: `PRIYA PATEL
+Email: priya.patel@dev-connect.io
+Phone: +1 (512) 555-0149
+Location: Austin, TX | Hybrid
+Education: B.E in Information Technology (2022)
 
 PROFESSIONAL SUMMARY
-Cloud Infrastructure and Platform Architect with 6.5 years of experience designing Kubernetes microservices platforms, AWS cloud networking, and CI/CD pipelines.
+Junior Software Engineer with 2.0 years of experience in Core Java backend programming, relational database schema modeling in MySQL, and REST API development.
 
 TECHNICAL SKILLS
-Cloud & Orchestration: AWS, Kubernetes, Docker, Terraform
-Backend: Java, Microservices, REST APIs, Python
-Databases: PostgreSQL, Redis, Kafka
+Backend: Java, REST APIs
+Databases: MySQL, Git
+Tools: IntelliJ, Maven
 
 EXPERIENCE
-Principal DevOps Architect | CloudSphere (2021 - Present)
-- Managed 40+ node Kubernetes clusters running Java microservices on AWS.
-- Built event-driven telemetry pipeline using Kafka and Redis.`,
-
-  frontendReact: `SNEHA REDDY
-Email: sneha.reddy@web-craft.dev
-Phone: +1 (408) 555-7281
+Associate Software Engineer | DataCorp (2022 - Present)
+- Built core CRUD services using Java and MySQL.
+- Documented and tested RESTful endpoints using Postman.`
+  },
+  tier3: {
+    label: 'Sneha Kulkarni (Frontend/Python Dev)',
+    matchPreview: 'Expected: ~20-25% (TIER 3 - Missing Java & Spring)',
+    text: `SNEHA KULKARNI
+Email: sneha.kulkarni@web-studio.org
+Phone: +1 (408) 555-8392
 Location: San Jose, CA
-Education: B.S. in Information Systems (2023)
+Education: B.Sc in Computer Science (2023)
 
 PROFESSIONAL SUMMARY
-Frontend Developer with 1.5 years of experience building responsive dashboards with React, JavaScript, HTML/CSS, and REST APIs.
+Frontend developer with 1.0 year experience building user interfaces using React, JavaScript, HTML/CSS, and Python scripts.
 
 TECHNICAL SKILLS
 Frontend: React, JavaScript, HTML/CSS
-Backend & Data: Python, MySQL, Git`
+Backend & Scripts: Python, MySQL, Git`
+  }
 };
 
 export default function App() {
@@ -101,21 +110,31 @@ export default function App() {
   const [systemHealth, setSystemHealth] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Selected filters
+  // Selected requisition
   const [selectedJobId, setSelectedJobId] = useState(null);
 
-  // Active Dossier Drawer for inspecting candidate
-  const [activeDossier, setActiveDossier] = useState(null); // { candidate, application, job, matchResult, notes }
+  // Candidate Dossier Slide-Over
+  const [activeDossier, setActiveDossier] = useState(null);
 
   // Modals
   const [showJobModal, setShowJobModal] = useState(false);
   const [showCandModal, setShowCandModal] = useState(false);
 
+  // Toast notification for user confirmation
+  const [toast, setToast] = useState(null);
+
   useEffect(() => {
-    loadPortalData();
+    loadAllData();
   }, []);
 
-  const loadPortalData = async () => {
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast(null);
+    }, 3500);
+  };
+
+  const loadAllData = async () => {
     setLoading(true);
     try {
       const [hRes, jRes, cRes, aRes, fRes, sRes] = await Promise.all([
@@ -138,50 +157,79 @@ export default function App() {
         setSelectedJobId(jRes[0].jobId);
       }
     } catch (e) {
-      console.error('Failed to load portal data:', e);
+      console.error('Data load error:', e);
     } finally {
       setLoading(false);
     }
   };
 
+  // Quick 1-Click Demo Reset & Seeder
+  const handleDemoSync = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/demo/reset', { method: 'POST' });
+      const data = await res.json();
+      await loadAllData();
+      showToast('✔ Complete Demo Pipeline auto-populated & scored in SQLite Database!');
+    } catch (e) {
+      showToast('Failed to populate demo: ' + e.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Run ATS batch-screening on current job
+  const handleBatchScreen = async (jobId) => {
+    try {
+      const res = await fetch(`/api/match/batch-screen/${jobId}`, { method: 'POST' });
+      const data = await res.json();
+      await loadAllData();
+      showToast(`✔ ATS Engine screened ${data.screenedCount || 6} candidates into the pipeline!`);
+    } catch (e) {
+      showToast('Screening error: ' + e.message, 'error');
+    }
+  };
+
+  // Update candidate pipeline stage
   const handleUpdateStatus = async (appId, newStatus) => {
     try {
-      await fetch(`/api/applications/${appId}/status`, {
+      const res = await fetch(`/api/applications/${appId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
       });
-      // Refresh apps & funnel
-      const aRes = await fetch('/api/applications').then(r => r.json());
-      setApplications(aRes);
-      fetch('/api/analytics/summary').then(r => r.json()).then(setFunnel);
+      if (res.ok) {
+        setApplications(prev =>
+          prev.map(a => a.applicationId === appId ? { ...a, status: newStatus } : a)
+        );
+        fetch('/api/analytics/summary').then(r => r.json()).then(setFunnel);
+        showToast(`✔ Application #${appId} moved to stage [${newStatus}] in Database`);
 
-      // If active dossier is currently open, update its status
-      if (activeDossier && activeDossier.application && activeDossier.application.applicationId === appId) {
-        setActiveDossier({
-          ...activeDossier,
-          application: { ...activeDossier.application, status: newStatus }
-        });
+        if (activeDossier && activeDossier.application && activeDossier.application.applicationId === appId) {
+          setActiveDossier(prev => ({
+            ...prev,
+            application: { ...prev.application, status: newStatus }
+          }));
+        }
       }
     } catch (e) {
-      console.error(e);
+      showToast('Failed to update stage: ' + e.message, 'error');
     }
   };
 
+  // Open Candidate Dossier
   const openDossier = async (app) => {
-    const job = jobs.find(j => j.jobId === app.jobId);
+    const job = jobs.find(j => j.jobId === app.jobId) || jobs[0];
     const candidate = candidates.find(c => c.candidateId === app.candidateId);
-    if (!job || !candidate) return;
+    if (!candidate) return;
 
     try {
-      // Evaluate live match result
       const matchRes = await fetch('/api/match/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobId: job.jobId, candidateId: candidate.candidateId })
       }).then(r => r.json());
 
-      // Fetch recruiter notes
       const notesRes = await fetch(`/api/applications/${app.applicationId}/notes`).then(r => r.json()).catch(() => []);
 
       setActiveDossier({
@@ -192,36 +240,62 @@ export default function App() {
         notes: notesRes
       });
     } catch (e) {
-      console.error('Error opening dossier:', e);
-    }
-  };
-
-  const handleAddNote = async (appId, author, text, rating) => {
-    try {
-      await fetch(`/api/applications/${appId}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ author, noteText: text, rating: String(rating) })
-      });
-      // Refresh notes in active dossier
-      const notesRes = await fetch(`/api/applications/${appId}/notes`).then(r => r.json()).catch(() => []);
-      if (activeDossier) {
-        setActiveDossier({ ...activeDossier, notes: notesRes });
-      }
-    } catch (e) {
       console.error(e);
     }
   };
 
-  const filteredApps = selectedJobId
-    ? applications.filter(a => a.jobId === selectedJobId)
-    : applications;
+  // Add interview note
+  const handleAddNote = async (appId, author, text, rating) => {
+    try {
+      const res = await fetch(`/api/applications/${appId}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ author, noteText: text, rating: String(rating) })
+      });
+      if (res.ok) {
+        const notesRes = await fetch(`/api/applications/${appId}/notes`).then(r => r.json()).catch(() => []);
+        if (activeDossier) {
+          setActiveDossier(prev => ({ ...prev, notes: notesRes }));
+        }
+        showToast('✔ Evaluation scorecard note saved to database!');
+      }
+    } catch (e) {
+      showToast('Failed to save note: ' + e.message, 'error');
+    }
+  };
 
-  const currentJob = jobs.find(j => j.jobId === selectedJobId) || jobs[0];
+  const currentJob = jobs.find(j => Number(j.jobId) === Number(selectedJobId)) || jobs[0];
+
+  const currentJobApps = applications.filter(a =>
+    currentJob ? Number(a.jobId) === Number(currentJob.jobId) : true
+  );
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-app)' }}>
       
+      {/* Toast Notification */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '24px',
+          zIndex: 9999,
+          background: toast.type === 'error' ? '#ef4444' : '#10b981',
+          color: '#fff',
+          padding: '12px 20px',
+          borderRadius: '8px',
+          fontWeight: 700,
+          fontSize: '0.875rem',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          animation: 'fadeIn 0.2s ease'
+        }}>
+          <ShieldCheck size={18} /> {toast.message}
+        </div>
+      )}
+
       {/* --- SIDEBAR --- */}
       <aside style={{
         width: '260px',
@@ -234,61 +308,57 @@ export default function App() {
         height: '100vh',
         zIndex: 20
       }}>
-        {/* Workspace Brand */}
+        {/* Brand */}
         <div style={{ padding: '20px 18px', borderBottom: '1px solid var(--border-main)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
-              width: '34px',
-              height: '34px',
+              width: '36px',
+              height: '36px',
               borderRadius: '8px',
               background: '#2563eb',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: 800,
-              fontSize: '1rem',
+              fontSize: '1.1rem',
               color: '#fff'
             }}>
               HS
             </div>
             <div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.01em' }}>
-                HireSphere
-              </div>
-              <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>
-                Enterprise ATS Portal
-              </div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>HireSphere</div>
+              <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>ATS & Skill-Match Engine</div>
             </div>
           </div>
         </div>
 
-        {/* Navigation */}
+        {/* Nav Links */}
         <nav style={{ padding: '16px 10px', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <NavBtn
             active={activeTab === 'pipeline'}
             onClick={() => setActiveTab('pipeline')}
             icon={<Kanban size={18} />}
-            label="Hiring Pipeline"
-            badge={filteredApps.length}
+            label="1. Hiring Pipeline"
+            badge={currentJobApps.length}
           />
           <NavBtn
             active={activeTab === 'leaderboard'}
             onClick={() => setActiveTab('leaderboard')}
             icon={<Award size={18} />}
-            label="Ranked Leaderboard"
+            label="2. Ranked Leaderboard"
           />
           <NavBtn
             active={activeTab === 'parser'}
             onClick={() => setActiveTab('parser')}
             icon={<FileCheck2 size={18} />}
-            label="Resume Parser Hub"
+            label="3. Instant Resume Matcher"
             highlight={true}
           />
           <NavBtn
             active={activeTab === 'jobs'}
             onClick={() => setActiveTab('jobs')}
             icon={<Briefcase size={18} />}
-            label="Requisitions (Jobs)"
+            label="Job Requisitions"
             badge={jobs.length}
           />
           <NavBtn
@@ -302,40 +372,40 @@ export default function App() {
             active={activeTab === 'analytics'}
             onClick={() => setActiveTab('analytics')}
             icon={<LayoutDashboard size={18} />}
-            label="Talent Insights"
+            label="Recruiter Analytics"
           />
         </nav>
 
-        {/* Database Info Widget */}
+        {/* Database Status */}
         <div style={{ padding: '16px', borderTop: '1px solid var(--border-main)' }}>
           <div style={{
             background: 'rgba(255, 255, 255, 0.03)',
             border: '1px solid var(--border-main)',
             borderRadius: '8px',
-            padding: '10px 12px'
+            padding: '12px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981' }} />
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#f8fafc' }}>
                   {systemHealth ? systemHealth.databaseType : 'SQLITE'} CONNECTED
                 </span>
               </div>
-              <Database size={13} color="#64748b" />
+              <Database size={14} color="#64748b" />
             </div>
-            <div style={{ fontSize: '0.675rem', color: '#64748b', wordBreak: 'break-all' }}>
-              {systemHealth ? systemHealth.database : 'hiresphere.db'}
+            <div style={{ fontSize: '0.675rem', color: '#94a3b8' }}>
+              Database: <strong>hiresphere.db</strong> (Active)
             </div>
           </div>
         </div>
       </aside>
 
-      {/* --- MAIN WORKSPACE --- */}
+      {/* --- MAIN CONTENT --- */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         
-        {/* Top Header */}
+        {/* Top Header & Requisition Selector */}
         <header style={{
-          height: '64px',
+          height: '68px',
           background: 'var(--bg-sidebar)',
           borderBottom: '1px solid var(--border-main)',
           padding: '0 28px',
@@ -346,14 +416,14 @@ export default function App() {
           top: 0,
           zIndex: 10
         }}>
-          {/* Job Filter Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>Active Requisition:</span>
+          {/* Active Job Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#94a3b8' }}>Active Job:</span>
             <select
               value={selectedJobId || ''}
               onChange={(e) => setSelectedJobId(Number(e.target.value))}
               className="select"
-              style={{ width: '280px', padding: '6px 10px', fontSize: '0.825rem' }}
+              style={{ width: '310px', fontWeight: 700, color: '#fff' }}
             >
               {jobs.map(j => (
                 <option key={j.jobId} value={j.jobId}>
@@ -363,38 +433,76 @@ export default function App() {
             </select>
           </div>
 
-          {/* Quick Actions */}
+          {/* Quick Header Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button onClick={() => setShowJobModal(true)} className="btn btn-secondary btn-sm">
-              <Plus size={14} /> New Requisition
+            {/* Instant Demo Seed Button */}
+            <button
+              onClick={handleDemoSync}
+              className="btn btn-primary btn-sm"
+              style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
+              title="Click to populate demo jobs, resumes, and scores"
+            >
+              <Sparkles size={14} /> 1-Click Demo Setup
             </button>
+
+            <button onClick={() => setShowJobModal(true)} className="btn btn-secondary btn-sm">
+              <Plus size={14} /> New Job
+            </button>
+
             <button onClick={() => setShowCandModal(true)} className="btn btn-secondary btn-sm">
               <Plus size={14} /> Add Candidate
             </button>
-            <button onClick={() => setActiveTab('parser')} className="btn btn-primary btn-sm">
-              <UploadCloud size={14} /> Ingest Resume
-            </button>
-            <button onClick={loadPortalData} className="btn-icon" title="Refresh Portal Data">
+
+            <button onClick={loadAllData} className="btn-icon" title="Reload Database Records">
               <RefreshCw size={15} />
             </button>
           </div>
         </header>
 
-        {/* View Switcher */}
-        <div style={{ padding: '28px', flex: 1 }}>
+        {/* Global Guided Demo Help Bar */}
+        <div style={{
+          background: 'rgba(37, 99, 235, 0.1)',
+          borderBottom: '1px solid rgba(59, 130, 246, 0.2)',
+          padding: '10px 28px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '0.8rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#93c5fd' }}>
+            <Sparkles size={15} color="#38bdf8" />
+            <span>
+              <strong>Evaluator Quick Tour:</strong> 1. Select Position &rarr; 2. Click <strong>"Screen Candidates"</strong> &rarr; 3. Click any applicant to inspect their <strong>Skill-Match Scorecard & Gaps</strong>!
+            </span>
+          </div>
+
+          {currentJob && (
+            <button
+              onClick={() => handleBatchScreen(currentJob.jobId)}
+              className="btn btn-secondary btn-sm"
+              style={{ padding: '3px 10px', fontSize: '0.75rem', borderColor: '#3b82f6', color: '#93c5fd' }}
+            >
+              ⚡ Run ATS Batch-Screen for this Job
+            </button>
+          )}
+        </div>
+
+        {/* View Router */}
+        <div style={{ padding: '24px 28px', flex: 1 }}>
           {activeTab === 'pipeline' && (
             <PipelineKanbanView
               job={currentJob}
-              applications={filteredApps}
+              applications={currentJobApps}
               onCardClick={openDossier}
               onUpdateStatus={handleUpdateStatus}
+              onRunScreen={() => handleBatchScreen(currentJob.jobId)}
             />
           )}
 
           {activeTab === 'leaderboard' && (
             <RankedLeaderboardView
               job={currentJob}
-              applications={filteredApps}
+              applications={currentJobApps}
               onRowClick={openDossier}
               onUpdateStatus={handleUpdateStatus}
             />
@@ -404,8 +512,9 @@ export default function App() {
             <ResumeParserView
               jobs={jobs}
               selectedJobId={selectedJobId}
-              onImportSuccess={() => {
-                loadPortalData();
+              onImportSuccess={(createdCandId) => {
+                loadAllData();
+                showToast(`✔ Candidate #${createdCandId} parsed, scored, and stored in Database!`);
                 setActiveTab('pipeline');
               }}
             />
@@ -431,7 +540,6 @@ export default function App() {
                 if (app) {
                   openDossier(app);
                 } else if (jobs.length > 0) {
-                  // Synthetic dossier view
                   openDossier({
                     applicationId: 0,
                     jobId: jobs[0].jobId,
@@ -454,7 +562,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* --- CANDIDATE DOSSIER DRAWER (INSPECTOR) --- */}
+      {/* --- SLIDE-OVER CANDIDATE DOSSIER --- */}
       {activeDossier && (
         <CandidateDossierDrawer
           dossier={activeDossier}
@@ -464,23 +572,26 @@ export default function App() {
         />
       )}
 
-      {/* --- MODALS --- */}
+      {/* --- CREATE JOB MODAL --- */}
       {showJobModal && (
         <CreateJobModal
           onClose={() => setShowJobModal(false)}
-          onSuccess={() => {
+          onSuccess={(jobTitle) => {
             setShowJobModal(false);
-            loadPortalData();
+            loadAllData();
+            showToast(`✔ Job Requisition "${jobTitle}" stored in Database!`);
           }}
         />
       )}
 
+      {/* --- ADD CANDIDATE MODAL --- */}
       {showCandModal && (
         <AddCandidateModal
           onClose={() => setShowCandModal(false)}
-          onSuccess={() => {
+          onSuccess={(candName) => {
             setShowCandModal(false);
-            loadPortalData();
+            loadAllData();
+            showToast(`✔ Candidate "${candName}" profile stored in Database!`);
           }}
         />
       )}
@@ -490,45 +601,53 @@ export default function App() {
 }
 
 // -------------------------------------------------------------
-// VIEW 1: KANBAN HIRING PIPELINE BOARD (ASHBY/LEVER STYLE)
+// VIEW 1: KANBAN HIRING PIPELINE BOARD
 // -------------------------------------------------------------
 
-function PipelineKanbanView({ job, applications, onCardClick, onUpdateStatus }) {
+function PipelineKanbanView({ job, applications, onCardClick, onUpdateStatus, onRunScreen }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
       
-      {/* Job Context Strip */}
-      <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>{job ? job.title : 'All Requisitions'}</h2>
-              <span className="badge badge-neutral">{job ? job.department : 'General'}</span>
-            </div>
-            <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>
-              Requirements: {job ? `${job.minExpYears} yrs min exp • ${job.minEducation}` : ''} • {applications.length} Active Applicants
-            </div>
+      {/* Active Position Summary Card */}
+      <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>
+              {job ? job.title : 'Select a Job Position'}
+            </h2>
+            <span className="badge badge-neutral">{job ? job.department : 'General'}</span>
+            <span className="badge badge-tier1">{applications.length} Candidates Screened</span>
+          </div>
+          <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>
+            Benchmark: {job ? `Min ${job.minExpYears} yrs experience • ${job.minEducation}` : ''}
           </div>
         </div>
 
+        {/* Skills Required Chips */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {job && job.requiredSkills && job.requiredSkills.slice(0, 4).map((sk, i) => (
-            <span key={i} style={{
-              fontSize: '0.725rem',
-              padding: '3px 8px',
-              borderRadius: '4px',
-              background: sk.weightType === 'MANDATORY' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-              color: sk.weightType === 'MANDATORY' ? '#f87171' : '#60a5fa',
-              border: `1px solid ${sk.weightType === 'MANDATORY' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
-              fontWeight: 600
-            }}>
-              {sk.skillName} ({sk.weightType === 'MANDATORY' ? 'Mandatory' : 'Preferred'})
-            </span>
-          ))}
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {job && job.requiredSkills && job.requiredSkills.map((sk, i) => (
+              <span key={i} style={{
+                fontSize: '0.725rem',
+                padding: '3px 8px',
+                borderRadius: '5px',
+                background: sk.weightType === 'MANDATORY' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                color: sk.weightType === 'MANDATORY' ? '#f87171' : '#60a5fa',
+                border: `1px solid ${sk.weightType === 'MANDATORY' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
+                fontWeight: 600
+              }}>
+                {sk.skillName} ({sk.weightType === 'MANDATORY' ? 'Mandatory 3x' : 'Preferred 2x'})
+              </span>
+            ))}
+          </div>
+
+          <button onClick={onRunScreen} className="btn btn-secondary btn-sm" style={{ marginLeft: '10px' }}>
+            <RefreshCw size={14} /> Screen All
+          </button>
         </div>
       </div>
 
-      {/* Kanban Board Horizontal Columns */}
+      {/* Kanban Stages Columns */}
       <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '16px' }}>
         {PIPELINE_STAGES.map(stage => {
           const stageApps = applications.filter(a => {
@@ -541,7 +660,7 @@ function PipelineKanbanView({ job, applications, onCardClick, onUpdateStatus }) 
               <div className="kanban-col-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: stage.color }} />
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#f8fafc' }}>
+                  <span style={{ fontSize: '0.825rem', fontWeight: 800, color: '#f8fafc' }}>
                     {stage.label}
                   </span>
                 </div>
@@ -552,8 +671,8 @@ function PipelineKanbanView({ job, applications, onCardClick, onUpdateStatus }) 
 
               <div className="kanban-cards-container">
                 {stageApps.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '28px 12px', color: '#64748b', fontSize: '0.775rem' }}>
-                    No candidates in this stage
+                  <div style={{ textAlign: 'center', padding: '36px 12px', color: '#64748b', fontSize: '0.775rem' }}>
+                    No applicants in this stage
                   </div>
                 ) : (
                   stageApps.map(app => {
@@ -567,11 +686,11 @@ function PipelineKanbanView({ job, applications, onCardClick, onUpdateStatus }) 
                         onClick={() => onCardClick(app)}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff' }}>
+                          <div style={{ fontWeight: 800, fontSize: '0.925rem', color: '#fff' }}>
                             {app.candidateName}
                           </div>
                           <span className={`badge ${tierClass}`}>
-                            {score.toFixed(0)}%
+                            {score.toFixed(0)}% Match
                           </span>
                         </div>
 
@@ -590,11 +709,12 @@ function PipelineKanbanView({ job, applications, onCardClick, onUpdateStatus }) 
                           </div>
                         </div>
 
-                        {/* Quick stage selector */}
+                        {/* Advance Stage Control */}
                         <div
-                          style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px' }}
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-main)', paddingTop: '8px' }}
                           onClick={(e) => e.stopPropagation()}
                         >
+                          <span style={{ fontSize: '0.675rem', color: '#64748b' }}>Move stage:</span>
                           <select
                             value={app.status || 'APPLIED'}
                             onChange={(e) => onUpdateStatus(app.applicationId, e.target.value)}
@@ -602,7 +722,7 @@ function PipelineKanbanView({ job, applications, onCardClick, onUpdateStatus }) 
                             style={{ padding: '3px 6px', fontSize: '0.725rem', width: 'auto' }}
                           >
                             {PIPELINE_STAGES.map(s => (
-                              <option key={s.id} value={s.id}>Move: {s.label}</option>
+                              <option key={s.id} value={s.id}>{s.label}</option>
                             ))}
                           </select>
                         </div>
@@ -625,17 +745,15 @@ function PipelineKanbanView({ job, applications, onCardClick, onUpdateStatus }) 
 // -------------------------------------------------------------
 
 function RankedLeaderboardView({ job, applications, onRowClick, onUpdateStatus }) {
-  // Sort dynamically by match score DESC
   const sorted = [...applications].sort((a, b) => b.matchScore - a.matchScore);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      
       <div className="card" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>Applicant Ranking Leaderboard</h2>
           <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '2px' }}>
-            Sorted dynamically by <code>match_score DESC</code> with weighted multi-factor scoring
+            Computed via <code>SkillMatchEngine</code> and sorted by <code>match_score DESC</code>
           </p>
         </div>
         <span className="badge badge-neutral" style={{ fontSize: '0.8rem' }}>
@@ -649,11 +767,11 @@ function RankedLeaderboardView({ job, applications, onRowClick, onUpdateStatus }
             <tr>
               <th style={{ width: '70px' }}>Rank</th>
               <th>Applicant Profile</th>
-              <th>Composite Score</th>
-              <th>Coverage (55%)</th>
-              <th>Exp Delta (25%)</th>
+              <th>Composite Match</th>
+              <th>Skill Coverage (55%)</th>
+              <th>Exp Alignment (25%)</th>
               <th>Proficiency (20%)</th>
-              <th>Pipeline Stage</th>
+              <th>Current Stage</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
@@ -661,7 +779,7 @@ function RankedLeaderboardView({ job, applications, onRowClick, onUpdateStatus }
             {sorted.length === 0 ? (
               <tr>
                 <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                  No applications recorded for this requisition.
+                  No candidates screened for this position yet.
                 </td>
               </tr>
             ) : (
@@ -680,7 +798,7 @@ function RankedLeaderboardView({ job, applications, onRowClick, onUpdateStatus }
                       </span>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 700, color: '#fff' }}>{app.candidateName}</div>
+                      <div style={{ fontWeight: 800, color: '#fff' }}>{app.candidateName}</div>
                       <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{app.candidateEmail}</div>
                     </td>
                     <td>
@@ -721,26 +839,28 @@ function RankedLeaderboardView({ job, applications, onRowClick, onUpdateStatus }
           </tbody>
         </table>
       </div>
-
     </div>
   );
 }
 
 // -------------------------------------------------------------
-// VIEW 3: RESUME PARSER & INGESTION HUB (REAL WORKING PARSER)
+// VIEW 3: INSTANT RESUME MATCHER & HEURISTIC PARSER
 // -------------------------------------------------------------
 
 function ResumeParserView({ jobs, selectedJobId, onImportSuccess }) {
-  const [resumeText, setResumeText] = useState(SAMPLE_RESUMES.javaBackend);
+  const [resumeText, setResumeText] = useState(DEMO_RESUMES.tier1.text);
   const [targetJobId, setTargetJobId] = useState(selectedJobId || (jobs[0] ? jobs[0].jobId : 1));
   const [parsing, setParsing] = useState(false);
-  const [parsedResult, setParsedResult] = useState(null);
+  const [parsedCandidate, setParsedCandidate] = useState(null);
   const [importing, setImporting] = useState(false);
-  const [importStatus, setImportStatus] = useState(null);
 
-  const handleParseOnly = async () => {
+  const handleSelectSample = (key) => {
+    setResumeText(DEMO_RESUMES[key].text);
+    setParsedCandidate(null);
+  };
+
+  const handlePreviewParse = async () => {
     setParsing(true);
-    setImportStatus(null);
     try {
       const res = await fetch('/api/resumes/parse', {
         method: 'POST',
@@ -748,7 +868,7 @@ function ResumeParserView({ jobs, selectedJobId, onImportSuccess }) {
         body: JSON.stringify({ resumeText })
       });
       const data = await res.json();
-      setParsedResult(data);
+      setParsedCandidate(data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -756,7 +876,7 @@ function ResumeParserView({ jobs, selectedJobId, onImportSuccess }) {
     }
   };
 
-  const handleImportToPipeline = async () => {
+  const handleSaveAndIngest = async () => {
     setImporting(true);
     try {
       const res = await fetch('/api/resumes/import', {
@@ -765,10 +885,7 @@ function ResumeParserView({ jobs, selectedJobId, onImportSuccess }) {
         body: JSON.stringify({ resumeText, jobId: String(targetJobId) })
       });
       const data = await res.json();
-      setImportStatus(data);
-      setTimeout(() => {
-        onImportSuccess();
-      }, 1500);
+      onImportSuccess(data.candidateId);
     } catch (e) {
       console.error(e);
     } finally {
@@ -779,41 +896,32 @@ function ResumeParserView({ jobs, selectedJobId, onImportSuccess }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px' }}>
       
-      {/* Left: Input Textarea */}
+      {/* Input Resume Box */}
       <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
           <div>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>Resume Ingestion & Heuristic Parser</h2>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>Heuristic Resume Matcher</h2>
             <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-              Paste raw candidate resume text to extract skills and profile fields in real time.
+              Paste any raw resume text or select a realistic demo profile below:
             </p>
-          </div>
-          
-          {/* Quick Sample Selector */}
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <button
-              onClick={() => { setResumeText(SAMPLE_RESUMES.javaBackend); setParsedResult(null); }}
-              className="btn btn-secondary btn-sm"
-            >
-              Sample 1 (Java)
-            </button>
-            <button
-              onClick={() => { setResumeText(SAMPLE_RESUMES.cloudDevops); setParsedResult(null); }}
-              className="btn btn-secondary btn-sm"
-            >
-              Sample 2 (DevOps)
-            </button>
-            <button
-              onClick={() => { setResumeText(SAMPLE_RESUMES.frontendReact); setParsedResult(null); }}
-              className="btn btn-secondary btn-sm"
-            >
-              Sample 3 (Frontend)
-            </button>
           </div>
         </div>
 
+        {/* 1-Click Sample Resumes */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+          <button onClick={() => handleSelectSample('tier1')} className="btn btn-secondary btn-sm">
+            🟢 {DEMO_RESUMES.tier1.label}
+          </button>
+          <button onClick={() => handleSelectSample('tier2')} className="btn btn-secondary btn-sm">
+            🟡 {DEMO_RESUMES.tier2.label}
+          </button>
+          <button onClick={() => handleSelectSample('tier3')} className="btn btn-secondary btn-sm">
+            🔴 {DEMO_RESUMES.tier3.label}
+          </button>
+        </div>
+
         <textarea
-          rows="18"
+          rows="16"
           value={resumeText}
           onChange={(e) => setResumeText(e.target.value)}
           placeholder="Paste candidate resume text here..."
@@ -822,7 +930,7 @@ function ResumeParserView({ jobs, selectedJobId, onImportSuccess }) {
         />
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Target Position:</span>
             <select
               value={targetJobId}
@@ -836,48 +944,42 @@ function ResumeParserView({ jobs, selectedJobId, onImportSuccess }) {
             </select>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={handleParseOnly} disabled={parsing} className="btn btn-secondary">
-              <FileCheck2 size={16} /> {parsing ? 'Parsing...' : 'Preview Extracted Fields'}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={handlePreviewParse} disabled={parsing} className="btn btn-secondary">
+              <FileCheck2 size={16} /> {parsing ? 'Extracting...' : 'Preview Extracted Fields'}
             </button>
-            <button onClick={handleImportToPipeline} disabled={importing} className="btn btn-primary">
-              <UploadCloud size={16} /> {importing ? 'Saving to Database...' : 'Ingest & Rank Candidate'}
+            <button onClick={handleSaveAndIngest} disabled={importing} className="btn btn-primary">
+              <UploadCloud size={16} /> {importing ? 'Storing in DB...' : 'Save & Ingest Candidate'}
             </button>
           </div>
         </div>
-
-        {importStatus && (
-          <div style={{ marginTop: '14px', padding: '12px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', color: '#34d399', fontSize: '0.85rem' }}>
-            ✔ Successfully ingested #{importStatus.candidateId} into pipeline! Match score calculated: <strong>{importStatus.matchScore}% ({importStatus.matchTier})</strong>. Redirecting...
-          </div>
-        )}
       </div>
 
-      {/* Right: Real Extracted Entities Preview */}
+      {/* Extracted Fields Preview */}
       <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
-        <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', marginBottom: '14px' }}>
-          Extracted Profile & Skill Tokens
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '14px' }}>
+          Extracted Entities & Matching
         </h3>
 
-        {parsedResult ? (
+        {parsedCandidate ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ padding: '14px', background: '#0b1120', borderRadius: '8px', border: '1px solid var(--border-main)' }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff' }}>{parsedResult.fullName}</div>
-              <div style={{ fontSize: '0.8rem', color: '#38bdf8', marginTop: '2px' }}>{parsedResult.email}</div>
-              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>{parsedResult.phone}</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>{parsedCandidate.fullName}</div>
+              <div style={{ fontSize: '0.8rem', color: '#38bdf8', marginTop: '2px' }}>{parsedCandidate.email}</div>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>{parsedCandidate.phone}</div>
               <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '8px' }}>
-                Experience: <strong>{parsedResult.totalExpYears} years</strong> • Degree: <strong>{parsedResult.highestEducation}</strong>
+                Total Experience: <strong>{parsedCandidate.totalExpYears} years</strong> • Education: <strong>{parsedCandidate.highestEducation}</strong>
               </div>
             </div>
 
             <div>
               <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>
-                Detected Skills Catalog Overlap ({parsedResult.skills ? parsedResult.skills.length : 0}):
+                Detected Skills in Master Database ({parsedCandidate.skills ? parsedCandidate.skills.length : 0}):
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {parsedResult.skills && parsedResult.skills.map((sk, i) => (
+                {parsedCandidate.skills && parsedCandidate.skills.map((sk, i) => (
                   <span key={i} style={{
-                    padding: '4px 10px',
+                    padding: '4px 8px',
                     borderRadius: '6px',
                     background: 'rgba(59, 130, 246, 0.15)',
                     border: '1px solid rgba(59, 130, 246, 0.3)',
@@ -891,18 +993,16 @@ function ResumeParserView({ jobs, selectedJobId, onImportSuccess }) {
               </div>
             </div>
 
-            <div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>
-                Bio Summary:
-              </div>
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.5, background: '#0b1120', padding: '10px', borderRadius: '6px' }}>
-                {parsedResult.resumeSummary}
-              </div>
+            <div style={{ marginTop: 'auto', padding: '14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '8px' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#34d399' }}>Ready for Database Ingestion</div>
+              <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>
+                Click "Save & Ingest Candidate" to commit this candidate and their skills via JDBC transaction!
+              </p>
             </div>
           </div>
         ) : (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b', fontSize: '0.85rem' }}>
-            Click <strong>"Preview Extracted Fields"</strong> or <strong>"Ingest & Rank Candidate"</strong> to inspect how the parser breaks down raw text into structured JDBC records.
+            Select a sample resume on the left or click <strong>"Preview Extracted Fields"</strong> to see how raw text is broken down into relational records.
           </div>
         )}
       </div>
@@ -921,10 +1021,10 @@ function JobRequisitionsView({ jobs, onOpenCreate, onSelectJob }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>Job Requisitions Catalog</h2>
-          <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Open corporate positions with weighted skill requisites</p>
+          <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Corporate positions with weighted skill requirements</p>
         </div>
         <button onClick={onOpenCreate} className="btn btn-primary">
-          <Plus size={16} /> Create Requisition
+          <Plus size={16} /> New Job Requisition
         </button>
       </div>
 
@@ -1021,7 +1121,7 @@ function CandidateDirectoryView({ candidates, onOpenRegister, onSelectCandidate 
               <tr key={cand.candidateId} style={{ cursor: 'pointer' }} onClick={() => onSelectCandidate(cand)}>
                 <td style={{ fontWeight: 700, color: '#64748b' }}>#{cand.candidateId}</td>
                 <td>
-                  <div style={{ fontWeight: 700, color: '#fff' }}>{cand.fullName}</div>
+                  <div style={{ fontWeight: 800, color: '#fff' }}>{cand.fullName}</div>
                   <div style={{ fontSize: '0.725rem', color: '#64748b', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {cand.resumeSummary}
                   </div>
@@ -1042,7 +1142,7 @@ function CandidateDirectoryView({ candidates, onOpenRegister, onSelectCandidate 
                   </div>
                 </td>
                 <td style={{ textAlign: 'right' }}>
-                  <button className="btn btn-ghost btn-sm">Inspect Dossier →</button>
+                  <button className="btn btn-ghost btn-sm">Inspect Dossier &rarr;</button>
                 </td>
               </tr>
             ))}
@@ -1054,24 +1154,22 @@ function CandidateDirectoryView({ candidates, onOpenRegister, onSelectCandidate 
 }
 
 // -------------------------------------------------------------
-// VIEW 6: TALENT ANALYTICS DASHBOARD
+// VIEW 6: RECRUITER TALENT ANALYTICS
 // -------------------------------------------------------------
 
 function AnalyticsDashboardView({ funnel, skillDemand, applications }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
-      {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px' }}>
-        <MetricCard title="Total Requisitions" value={funnel ? `${funnel.openJobs} Active` : '0'} sub={`${funnel ? funnel.totalJobs : 0} Total created`} />
-        <MetricCard title="Talent Pool" value={funnel ? funnel.totalCandidates : 0} sub="Candidates indexed" />
-        <MetricCard title="Applications Screened" value={funnel ? funnel.totalApplications : 0} sub="Evaluated by Engine" />
-        <MetricCard title="Shortlisted Pipeline" value={funnel ? funnel.shortlistedCount : 0} sub="Passed threshold" color="#34d399" />
-        <MetricCard title="Avg Match Score" value={funnel ? `${funnel.avgMatchScore}%` : '0%'} sub="Global ATS average" color="#fbbf24" />
+        <MetricCard title="Active Requisitions" value={funnel ? `${funnel.openJobs}` : '0'} sub={`${funnel ? funnel.totalJobs : 0} Total in Database`} />
+        <MetricCard title="Talent Pool Size" value={funnel ? funnel.totalCandidates : 0} sub="Candidates indexed" />
+        <MetricCard title="Screened Pipeline" value={funnel ? funnel.totalApplications : 0} sub="Evaluated by Engine" />
+        <MetricCard title="Shortlisted Talent" value={funnel ? funnel.shortlistedCount : 0} sub="Ready for interview" color="#34d399" />
+        <MetricCard title="ATS Average Score" value={funnel ? `${funnel.avgMatchScore}%` : '0%'} sub="Across all applicants" color="#fbbf24" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px' }}>
-        {/* Skill Demand Matrix */}
         <div className="card" style={{ padding: '24px' }}>
           <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>Technical Skill Demand Matrix</h3>
           <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '20px' }}>Aggregated across all active open requisitions in 3NF schema</p>
@@ -1095,7 +1193,6 @@ function AnalyticsDashboardView({ funnel, skillDemand, applications }) {
           </div>
         </div>
 
-        {/* Funnel Conversion */}
         <div className="card" style={{ padding: '24px' }}>
           <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>Hiring Conversion Funnel</h3>
           <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '20px' }}>Candidates progressing through stages</p>
@@ -1136,7 +1233,7 @@ function MetricCard({ title, value, sub, color }) {
 }
 
 // -------------------------------------------------------------
-// COMPONENT: SLIDE-OVER CANDIDATE DOSSIER DRAWER (INSPECTOR)
+// COMPONENT: SLIDE-OVER CANDIDATE DOSSIER DRAWER
 // -------------------------------------------------------------
 
 function CandidateDossierDrawer({ dossier, onClose, onUpdateStatus, onAddNote }) {
@@ -1242,7 +1339,7 @@ function CandidateDossierDrawer({ dossier, onClose, onUpdateStatus, onAddNote })
         <div style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
           {tab === 'match' && matchResult && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Score Radar Bars */}
+              
               <div style={{ background: '#0b1120', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-main)' }}>
                 <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#f8fafc', marginBottom: '12px' }}>
                   Multi-Factor Weight Breakdown:
@@ -1280,7 +1377,6 @@ function CandidateDossierDrawer({ dossier, onClose, onUpdateStatus, onAddNote })
                 </div>
               </div>
 
-              {/* Matched Skills */}
               <div>
                 <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', marginBottom: '8px' }}>
                   ✔ Verified Matching Skills ({matchResult.matchedSkills.length}):
@@ -1294,7 +1390,6 @@ function CandidateDossierDrawer({ dossier, onClose, onUpdateStatus, onAddNote })
                 </div>
               </div>
 
-              {/* Skill Gaps */}
               <div>
                 <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', marginBottom: '8px' }}>
                   ▲ Critical Qualification Gaps ({matchResult.skillGaps.length}):
@@ -1333,7 +1428,6 @@ function CandidateDossierDrawer({ dossier, onClose, onUpdateStatus, onAddNote })
 
           {tab === 'notes' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Add Note Form */}
               <form onSubmit={submitNote} style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#0b1120', padding: '14px', borderRadius: '8px' }}>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <input
@@ -1370,7 +1464,6 @@ function CandidateDossierDrawer({ dossier, onClose, onUpdateStatus, onAddNote })
                 </button>
               </form>
 
-              {/* Note History */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {notes && notes.map((n, i) => (
                   <div key={i} style={{ padding: '12px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-main)' }}>
@@ -1387,7 +1480,7 @@ function CandidateDossierDrawer({ dossier, onClose, onUpdateStatus, onAddNote })
           )}
         </div>
 
-        {/* Drawer Stage Advance Footer */}
+        {/* Advance Stage Footer */}
         <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border-main)', background: '#0b1120', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Advance Stage:</span>
           <div style={{ display: 'flex', gap: '6px' }}>
@@ -1432,7 +1525,7 @@ function CreateJobModal({ onClose, onSuccess }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title, department, minExpYears, minEducation, skills })
     });
-    onSuccess();
+    onSuccess(title);
   };
 
   return (
@@ -1497,7 +1590,7 @@ function AddCandidateModal({ onClose, onSuccess }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fullName, email, phone, totalExpYears, highestEducation, skills })
     });
-    onSuccess();
+    onSuccess(fullName);
   };
 
   return (
@@ -1562,7 +1655,7 @@ function NavBtn({ active, onClick, icon, label, badge, highlight }) {
         padding: '9px 12px',
         borderRadius: '7px',
         border: '1px solid transparent',
-        background: active ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
+        background: active ? 'rgba(59, 130, 246, 0.14)' : 'transparent',
         color: active ? '#ffffff' : '#94a3b8',
         fontWeight: active ? 700 : 500,
         fontSize: '0.85rem',

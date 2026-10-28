@@ -46,6 +46,13 @@ public class Main {
                     System.out.println(ConsoleColors.green("[OK] Auto-loaded " + imported + " sample candidates from data/sample_candidates.csv"));
                 }
             }
+
+            // Auto-screen candidates across all active jobs
+            List<Job> allJobs = jobService.getAllJobs();
+            for (Job j : allJobs) {
+                analyticsService.batchScreenAllCandidatesForJob(j.getJobId());
+            }
+
             System.out.println(ConsoleColors.green("[OK] Database and master records initialized successfully."));
 
             // Start REST API & Web Portal

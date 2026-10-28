@@ -19,7 +19,10 @@ import java.util.List;
 public class CandidateDAO {
 
     public int createCandidate(Candidate candidate, List<CandidateSkill> skills) throws SQLException {
+        String selectExistingSql = "SELECT candidate_id FROM candidates WHERE LOWER(email) = LOWER(?)";
         String insertCandSql = "INSERT INTO candidates (full_name, email, phone, total_exp_years, highest_education, resume_summary) VALUES (?, ?, ?, ?, ?, ?)";
+        String updateCandSql = "UPDATE candidates SET full_name = ?, phone = ?, total_exp_years = ?, highest_education = ?, resume_summary = ? WHERE candidate_id = ?";
+        String deleteSkillsSql = "DELETE FROM candidate_skills WHERE candidate_id = ?";
         String insertSkillSql = "INSERT INTO candidate_skills (candidate_id, skill_id, proficiency_level, years_experience) VALUES (?, ?, ?, ?)";
 
         Connection conn = null;
@@ -27,31 +30,61 @@ public class CandidateDAO {
             conn = DatabaseConfig.getConnection();
             conn.setAutoCommit(false); // Begin Transaction
 
-            int generatedCandId = -1;
-            try (PreparedStatement candStmt = conn.prepareStatement(insertCandSql, Statement.RETURN_GENERATED_KEYS)) {
-                candStmt.setString(1, candidate.getFullName());
-                candStmt.setString(2, candidate.getEmail());
-                candStmt.setString(3, candidate.getPhone());
-                candStmt.setDouble(4, candidate.getTotalExpYears());
-                candStmt.setString(5, candidate.getHighestEducation());
-                candStmt.setString(6, candidate.getResumeSummary());
-                candStmt.executeUpdate();
-
-                try (ResultSet keys = candStmt.getGeneratedKeys()) {
-                    if (keys.next()) {
-                        generatedCandId = keys.getInt(1);
+            int targetCandId = -1;
+            // Check if candidate email already exists
+            try (PreparedStatement checkStmt = conn.prepareStatement(selectExistingSql)) {
+                checkStmt.setString(1, candidate.getEmail().trim());
+                try (ResultSet rs = checkStmt.executeQuery()) {
+                    if (rs.next()) {
+                        targetCandId = rs.getInt(1);
                     }
                 }
             }
 
-            if (generatedCandId == -1) {
-                throw new SQLException("Failed to retrieve generated candidate ID.");
+            if (targetCandId > 0) {
+                // Upsert: update existing profile
+                try (PreparedStatement updateStmt = conn.prepareStatement(updateCandSql)) {
+                    updateStmt.setString(1, candidate.getFullName());
+                    updateStmt.setString(2, candidate.getPhone());
+                    updateStmt.setDouble(3, candidate.getTotalExpYears());
+                    updateStmt.setString(4, candidate.getHighestEducation());
+                    updateStmt.setString(5, candidate.getResumeSummary());
+                    updateStmt.setInt(6, targetCandId);
+                    updateStmt.executeUpdate();
+                }
+
+                // Delete previous skills to refresh
+                try (PreparedStatement delStmt = conn.prepareStatement(deleteSkillsSql)) {
+                    delStmt.setInt(1, targetCandId);
+                    delStmt.executeUpdate();
+                }
+            } else {
+                // Insert new candidate
+                try (PreparedStatement candStmt = conn.prepareStatement(insertCandSql, Statement.RETURN_GENERATED_KEYS)) {
+                    candStmt.setString(1, candidate.getFullName());
+                    candStmt.setString(2, candidate.getEmail().trim());
+                    candStmt.setString(3, candidate.getPhone());
+                    candStmt.setDouble(4, candidate.getTotalExpYears());
+                    candStmt.setString(5, candidate.getHighestEducation());
+                    candStmt.setString(6, candidate.getResumeSummary());
+                    candStmt.executeUpdate();
+
+                    try (ResultSet keys = candStmt.getGeneratedKeys()) {
+                        if (keys.next()) {
+                            targetCandId = keys.getInt(1);
+                        }
+                    }
+                }
+            }
+
+            if (targetCandId <= 0) {
+                throw new SQLException("Failed to retrieve or generate candidate ID.");
             }
 
             if (skills != null && !skills.isEmpty()) {
                 try (PreparedStatement skillStmt = conn.prepareStatement(insertSkillSql)) {
                     for (CandidateSkill cs : skills) {
-                        skillStmt.setInt(1, generatedCandId);
+                        skillStmt.setInt(1, targetCandId);
                         skillStmt.setInt(2, cs.getSkillId());
                         skillStmt.setInt(3, cs.getProficiencyLevel());
                         skillStmt.setDouble(4, cs.getYearsExperience());
@@ -62,8 +95,8 @@ public class CandidateDAO {
             }
 
             conn.commit(); // Commit Transaction
-            candidate.setCandidateId(generatedCandId);
-            return generatedCandId;
+            candidate.setCandidateId(targetCandId);
+            return targetCandId;
 
         } catch (SQLException ex) {
             if (conn != null) {
