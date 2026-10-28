@@ -1,0 +1,8 @@
+full_name,email,phone,total_exp_years,highest_education,skills,resume_summary
+"Aarav Sharma","aarav.sharma@example.com","+91-9876543210",4.5,"B.Tech CSE","Java:4:4.0;Spring Boot:4:3.5;MySQL:4:4.0;Docker:3:2.0;REST APIs:4:4.0","Full stack backend engineer with 4.5 years experience in building high-throughput microservices using Java and Spring Boot."
+"Priya Patel","priya.patel@example.com","+91-9876543211",2.0,"B.E Information Tech","Java:3:2.0;MySQL:3:2.0;Git:4:2.0;REST APIs:3:1.5","Junior software engineer specialized in core Java, database querying, and API development."
+"Rohan Verma","rohan.verma@example.com","+91-9876543212",6.0,"M.Tech Software Eng","Java:5:6.0;Spring Boot:5:5.0;AWS:4:3.5;Docker:4:3.0;Kubernetes:3:2.0;PostgreSQL:4:4.0;Microservices:5:5.0","Senior backend architect leading cloud-native migrations with strong expertise in Spring Boot, AWS, and containerization."
+"Sneha Kulkarni","sneha.k@example.com","+91-9876543213",1.0,"B.Sc Computer Science","Python:3:1.0;HTML/CSS:4:1.0;JavaScript:3:1.0;MySQL:2:0.8","Enthusiastic entry-level developer with frontend and Python foundation seeking a backend role."
+"Vikramaditya Rao","vikram.rao@example.com","+91-9876543214",5.0,"B.Tech IT","Python:5:5.0;Django:4:4.0;FastAPI:4:3.0;Docker:4:3.0;PostgreSQL:4:4.0;Redis:3:2.0","Senior Python engineer proficient in asynchronous APIs, Docker deployments, and caching."
+"Ananya Iyer","ananya.iyer@example.com","+91-9876543215",3.5,"B.Tech CSE","Java:4:3.5;Spring Boot:3:2.5;MySQL:4:3.5;Kafka:3:1.5;Git:4:3.5","Backend developer experienced in event-driven microservices using Spring Boot and Apache Kafka."
+
